@@ -1,0 +1,8 @@
+﻿# Archivos que genera NetBeans al compilar
+UrbanRoute/build/
+UrbanRoute/dist/
+UrbanRoute/nbproject/private/
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
