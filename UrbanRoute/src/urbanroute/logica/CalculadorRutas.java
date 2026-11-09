@@ -1,6 +1,7 @@
 package urbanroute.logica;
 
 import urbanroute.estructuras.ColaPrioridad;
+import urbanroute.estructuras.ListaEnlazada;
 import urbanroute.estructuras.Pila;
 import urbanroute.modelo.Conexion;
 import urbanroute.modelo.Estacion;
@@ -26,7 +27,7 @@ import urbanroute.modelo.Ruta;
  * Complejidad: O((V + E) log V), con V estaciones y E conexiones.
  *
  * @author Gianmarco Del Giudice
- * @version 0.1
+ * @version 0.2
  */
 public class CalculadorRutas {
 
@@ -138,16 +139,16 @@ public class CalculadorRutas {
      *
      * @param fin    índice de la estación de destino
      * @param previo predecesor de cada estación
-     * @return las estaciones del camino, del origen al destino
+     * @return lista con las estaciones del camino, del origen al destino
      */
-    private Estacion[] reconstruirCamino(int fin, int[] previo) {
+    private ListaEnlazada<Estacion> reconstruirCamino(int fin, int[] previo) {
         Pila<Estacion> pila = new Pila<>();
         for (int i = fin; i != SIN_PREVIO; i = previo[i]) {
             pila.apilar(grafo.getEstacion(i));
         }
-        Estacion[] camino = new Estacion[pila.tamano()];
-        for (int i = 0; i < camino.length; i++) {
-            camino[i] = pila.desapilar();
+        ListaEnlazada<Estacion> camino = new ListaEnlazada<>();
+        while (!pila.estaVacia()) {
+            camino.agregar(pila.desapilar());
         }
         return camino;
     }

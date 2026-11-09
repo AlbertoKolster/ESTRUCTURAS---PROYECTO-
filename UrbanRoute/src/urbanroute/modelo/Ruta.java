@@ -1,17 +1,20 @@
 package urbanroute.modelo;
 
+import urbanroute.estructuras.ListaEnlazada;
+
 /**
  * Resultado de buscar el camino de menor tiempo entre dos estaciones.
  * <p>
- * Guarda las estaciones del trayecto en orden (del origen al destino) y el
- * tiempo total en minutos. Si no existe camino entre ambas estaciones (están
- * en subredes distintas), la ruta queda marcada como inexistente.
+ * Guarda las estaciones del trayecto en una {@link ListaEnlazada}, en orden
+ * (del origen al destino), y el tiempo total en minutos. Si no existe
+ * camino entre ambas estaciones (están en subredes distintas), la ruta
+ * queda marcada como inexistente.
  * <p>
  * Es un objeto inmutable: lo crea el calculador de rutas y lo consultan el
  * controlador y la interfaz.
  *
  * @author Gianmarco Del Giudice
- * @version 0.1
+ * @version 0.2
  */
 public class Ruta {
 
@@ -21,14 +24,15 @@ public class Ruta {
     /** Estación donde termina la búsqueda. */
     private final Estacion destino;
 
-    /** Estaciones del trayecto, del origen al destino; vacío si no existe. */
-    private final Estacion[] estaciones;
+    /** Estaciones del trayecto, del origen al destino; vacía si no existe. */
+    private final ListaEnlazada<Estacion> estaciones;
 
     /** Tiempo total del trayecto en minutos. */
     private final double tiempoTotal;
 
     /**
-     * Crea una ruta existente.
+     * Crea una ruta existente. Copia las estaciones en una lista propia para
+     * que nadie pueda modificar la ruta desde afuera. Complejidad O(k).
      *
      * @param estaciones  estaciones del trayecto, del origen al destino
      *                    (al menos una)
@@ -36,8 +40,8 @@ public class Ruta {
      * @throws IllegalArgumentException si no hay estaciones o el tiempo es
      *                                  negativo
      */
-    public Ruta(Estacion[] estaciones, double tiempoTotal) {
-        if (estaciones == null || estaciones.length == 0) {
+    public Ruta(ListaEnlazada<Estacion> estaciones, double tiempoTotal) {
+        if (estaciones == null || estaciones.estaVacia()) {
             throw new IllegalArgumentException(
                     "Una ruta debe tener al menos una estación");
         }
@@ -45,9 +49,15 @@ public class Ruta {
             throw new IllegalArgumentException(
                     "El tiempo total no puede ser negativo: " + tiempoTotal);
         }
-        this.estaciones = copiar(estaciones);
-        this.origen = estaciones[0];
-        this.destino = estaciones[estaciones.length - 1];
+        this.estaciones = new ListaEnlazada<>();
+        Estacion ultima = null;
+        estaciones.reiniciarRecorrido();
+        while (estaciones.haySiguiente()) {
+            ultima = estaciones.siguiente();
+            this.estaciones.agregar(ultima);
+        }
+        this.origen = this.estaciones.obtener(0);
+        this.destino = ultima;
         this.tiempoTotal = tiempoTotal;
     }
 
@@ -60,7 +70,7 @@ public class Ruta {
     private Ruta(Estacion origen, Estacion destino) {
         this.origen = origen;
         this.destino = destino;
-        this.estaciones = new Estacion[0];
+        this.estaciones = new ListaEnlazada<>();
         this.tiempoTotal = Double.POSITIVE_INFINITY;
     }
 
@@ -81,7 +91,7 @@ public class Ruta {
      * @return {@code true} si la ruta existe
      */
     public boolean existe() {
-        return estaciones.length > 0;
+        return !estaciones.estaVacia();
     }
 
     /**
@@ -106,10 +116,10 @@ public class Ruta {
      * Devuelve las estaciones del trayecto, del origen al destino.
      * Complejidad O(k), con k la cantidad de estaciones de la ruta.
      *
-     * @return copia del arreglo de estaciones (vacío si no existe la ruta)
+     * @return arreglo nuevo con las estaciones (vacío si no existe la ruta)
      */
     public Estacion[] getEstaciones() {
-        return copiar(estaciones);
+        return estaciones.aArreglo(new Estacion[estaciones.tamano()]);
     }
 
     /**
@@ -119,7 +129,7 @@ public class Ruta {
      * @return el número de estaciones (0 si no existe la ruta)
      */
     public int getNumeroEstaciones() {
-        return estaciones.length;
+        return estaciones.tamano();
     }
 
     /**
@@ -144,28 +154,15 @@ public class Ruta {
                     + destino.getId();
         }
         StringBuilder texto = new StringBuilder();
-        for (int i = 0; i < estaciones.length; i++) {
-            if (i > 0) {
+        estaciones.reiniciarRecorrido();
+        while (estaciones.haySiguiente()) {
+            texto.append(estaciones.siguiente().getId());
+            if (estaciones.haySiguiente()) {
                 texto.append(" → ");
             }
-            texto.append(estaciones[i].getId());
         }
         return texto.append(" (")
                 .append(Conexion.formatearTiempo(tiempoTotal))
                 .append(" min)").toString();
-    }
-
-    /**
-     * Copia un arreglo de estaciones para que nadie modifique el interno.
-     *
-     * @param original arreglo a copiar
-     * @return la copia
-     */
-    private static Estacion[] copiar(Estacion[] original) {
-        Estacion[] copia = new Estacion[original.length];
-        for (int i = 0; i < original.length; i++) {
-            copia[i] = original[i];
-        }
-        return copia;
     }
 }
