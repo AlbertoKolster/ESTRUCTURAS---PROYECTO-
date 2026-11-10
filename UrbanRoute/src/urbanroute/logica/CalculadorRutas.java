@@ -76,7 +76,9 @@ public class CalculadorRutas {
         int inicio = origen.getIndice();
         int fin = destino.getIndice();
         distancia[inicio] = 0;
-        ColaPrioridad cola = new ColaPrioridad();
+        // Cada conexión inserta como mucho una vez desde cada extremo, más
+        // la inserción del origen: 2E + 1 posiciones siempre alcanzan.
+        ColaPrioridad cola = new ColaPrioridad(2 * grafo.numeroConexiones() + 1);
         cola.insertar(inicio, 0);
 
         while (!cola.estaVacia()) {

@@ -3,61 +3,73 @@ package urbanroute.estructuras;
 /**
  * Cola de prioridad de mínimos (min-heap) implementada sobre arreglos.
  * <p>
- * Almacena pares (índice de estación, distancia) y siempre entrega primero
- * el par de menor distancia. Es la estructura que usa el algoritmo de
- * Dijkstra para elegir, en cada paso, la estación pendiente más cercana al
- * origen.
+ * Almacena pares (índice de estación, distancia) y siempre entrega primero el
+ * par de menor distancia. Es la estructura que usa el algoritmo de Dijkstra
+ * para elegir, en cada paso, la estación pendiente más cercana al origen.
  * <p>
- * El montículo se guarda en dos arreglos paralelos: en la posición
- * {@code i} están el índice y la distancia de un mismo par. Para cualquier
- * posición {@code i}:
+ * El montículo se guarda en dos arreglos paralelos: en la posición {@code i}
+ * están el índice y la distancia de un mismo par. Para cualquier posición
+ * {@code i}:
  * <ul>
  * <li>padre: {@code (i - 1) / 2}</li>
  * <li>hijo izquierdo: {@code 2 * i + 1}</li>
  * <li>hijo derecho: {@code 2 * i + 2}</li>
  * </ul>
- * Invariante del montículo: la distancia de cada padre es menor o igual que
- * la de sus hijos, por lo que el mínimo siempre está en la posición 0.
+ * Invariante del montículo: la distancia de cada padre es menor o igual que la
+ * de sus hijos, por lo que el mínimo siempre está en la posición 0.
  * <p>
- * Se permiten índices repetidos: cuando Dijkstra encuentra un camino más
- * corto hacia una estación, la vuelve a insertar con la nueva distancia y
- * más adelante descarta la entrada vieja ("eliminación perezosa").
+ * Se permiten índices repetidos: cuando Dijkstra encuentra un camino más corto
+ * hacia una estación, la vuelve a insertar con la nueva distancia y más
+ * adelante descarta la entrada vieja ("eliminación perezosa").
+ * <p>
+ * La capacidad es fija y se indica al crear la cola. Para Dijkstra basta con 2E
+ * + 1 posiciones (E = número de conexiones), porque cada conexión puede
+ * provocar como mucho una inserción desde cada uno de sus extremos, más la
+ * inserción inicial del origen.
  *
  * @author Alberto Kolster Garcia
- * @version 0.1
+ * @version 0.2
  */
 public class ColaPrioridad {
 
-    /** Capacidad con la que se crean los arreglos. */
-    private static final int CAPACIDAD_INICIAL = 16;
-
-    /** Índices de estación de cada par, ordenados como montículo. */
+    /**
+     * Índices de estación de cada par, ordenados como montículo.
+     */
     private int[] indices;
-
-    /** Distancias de cada par, en las mismas posiciones que {@link #indices}. */
+    /**
+     * Distancias de cada par, en las mismas posiciones que {@link
+     * #indices}.
+     */
     private double[] distancias;
-
-    /** Cantidad de pares almacenados. */
+    /**
+     * Cantidad de pares almacenados.
+     */
     private int tamano;
 
     /**
-     * Crea una cola de prioridad vacía.
+     * Crea una cola de prioridad vacía con capacidad fija.
+     *
+     * @param capacidad cantidad máxima de pares que podrá guardar (mayor que 0)
+     * @throws IllegalArgumentException si la capacidad no es positiva
      */
-    public ColaPrioridad() {
-        indices = new int[CAPACIDAD_INICIAL];
-        distancias = new double[CAPACIDAD_INICIAL];
+    public ColaPrioridad(int capacidad) {
+        if (capacidad <= 0) {
+            throw new IllegalArgumentException(
+                    "La capacidad debe ser mayor que 0: " + capacidad);
+        }
+        indices = new int[capacidad];
+        distancias = new double[capacidad];
         tamano = 0;
     }
 
     /**
-     * Inserta un par (índice, distancia). Complejidad O(log n), y O(n) solo
-     * en las inserciones que obligan a ampliar los arreglos (O(log n)
-     * amortizado).
+     * Inserta un par (índice, distancia). Complejidad O(log n).
      *
-     * @param indice    índice de la estación en el grafo
+     * @param indice índice de la estación en el grafo
      * @param distancia distancia acumulada desde el origen
-     * @throws IllegalArgumentException si el índice es negativo o la
-     *                                  distancia es negativa o no es un número
+     * @throws IllegalArgumentException si el índice es negativo o la distancia
+     * es negativa o no es un número
+     * @throws IllegalStateException si la cola está llena
      */
     public void insertar(int indice, double distancia) {
         if (indice < 0) {
@@ -69,10 +81,12 @@ public class ColaPrioridad {
                     "La distancia debe ser un número mayor o igual a 0: "
                     + distancia);
         }
-        if (tamano == indices.length) {
-            redimensionar();
+        if (estaLlena()) {
+            throw new IllegalStateException(
+                    "La cola de prioridad está llena (capacidad "
+                    + indices.length + ")");
         }
-        // Se coloca al final y se sube hasta su lugar.
+// Se coloca al final y se sube hasta su lugar.
         indices[tamano] = indice;
         distancias[tamano] = distancia;
         flotar(tamano);
@@ -80,8 +94,8 @@ public class ColaPrioridad {
     }
 
     /**
-     * Saca el par de menor distancia y devuelve su índice. Complejidad
-     * O(log n).
+     * Saca el par de menor distancia y devuelve su índice. Complejidad O(log
+     * n).
      * <p>
      * Si se necesita también la distancia, se consulta antes con
      * {@link #verDistanciaMinima()}.
@@ -94,7 +108,7 @@ public class ColaPrioridad {
         int indiceMinimo = indices[0];
         tamano--;
         if (tamano > 0) {
-            // El último par pasa a la raíz y se baja hasta su lugar.
+// El último par pasa a la raíz y se baja hasta su lugar.
             indices[0] = indices[tamano];
             distancias[0] = distancias[tamano];
             hundir(0);
@@ -103,8 +117,8 @@ public class ColaPrioridad {
     }
 
     /**
-     * Devuelve el índice del par de menor distancia sin sacarlo.
-     * Complejidad O(1).
+     * Devuelve el índice del par de menor distancia sin sacarlo. Complejidad
+     * O(1).
      *
      * @return el índice de estación con menor distancia
      * @throws IllegalStateException si la cola está vacía
@@ -115,8 +129,8 @@ public class ColaPrioridad {
     }
 
     /**
-     * Devuelve la menor distancia almacenada sin sacar el par.
-     * Complejidad O(1).
+     * Devuelve la menor distancia almacenada sin sacar el par. Complejidad
+     * O(1).
      *
      * @return la distancia del par en la raíz del montículo
      * @throws IllegalStateException si la cola está vacía
@@ -142,6 +156,15 @@ public class ColaPrioridad {
      */
     public boolean estaVacia() {
         return tamano == 0;
+    }
+
+    /**
+     * Indica si la cola ya no admite más pares. Complejidad O(1).
+     *
+     * @return {@code true} si el tamaño alcanzó la capacidad
+     */
+    public boolean estaLlena() {
+        return tamano == indices.length;
     }
 
     /**
@@ -205,26 +228,9 @@ public class ColaPrioridad {
         int indiceTemporal = indices[a];
         indices[a] = indices[b];
         indices[b] = indiceTemporal;
-
         double distanciaTemporal = distancias[a];
         distancias[a] = distancias[b];
         distancias[b] = distanciaTemporal;
-    }
-
-    /**
-     * Duplica la capacidad de los arreglos copiando los pares existentes.
-     * Complejidad O(n).
-     */
-    private void redimensionar() {
-        int nuevaCapacidad = indices.length * 2;
-        int[] nuevosIndices = new int[nuevaCapacidad];
-        double[] nuevasDistancias = new double[nuevaCapacidad];
-        for (int i = 0; i < tamano; i++) {
-            nuevosIndices[i] = indices[i];
-            nuevasDistancias[i] = distancias[i];
-        }
-        indices = nuevosIndices;
-        distancias = nuevasDistancias;
     }
 
     /**
