@@ -6,14 +6,14 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import urbanroute.modelo.Estacion;
 import urbanroute.modelo.TablaHash;
-import urbanroute.modelo.TablaHash.TipoClave;
 
 /**
  * Verifica el funcionamiento de {@link TablaHash} y muestra el resultado de
  * cada prueba en una ventana, sin usar la consola.
  *
  * @author Alberto Kolster Garcia
- * @version 0.1
+ * @author Gianmarco Del Giudice
+ * @version 0.2
  */
 public class PruebaTablaHash {
 
@@ -25,6 +25,9 @@ public class PruebaTablaHash {
         "YAR", "LA_P", "ART", "MAT", "CAP_L2", "CSB", "RIN", "MDC", "COC",
         "VAL", "BAN", "SYM", "CUD", "ZUM", "PAR_C", "TEAT", "CAP_L4"
     };
+
+    /** Estación cualquiera para las pruebas de datos inválidos. */
+    private static final Estacion PRUEBA = new Estacion("X", "X", "", "", 0);
 
     /** Texto acumulado con el resultado de cada prueba. */
     private static final StringBuilder INFORME = new StringBuilder();
@@ -48,6 +51,8 @@ public class PruebaTablaHash {
             probarColisionesYRedimension();
             INFORME.append("\n--- Clave por nombre ---\n");
             probarClavePorNombre();
+            INFORME.append("\n--- Eliminar claves que no existen ---\n");
+            probarEliminarInexistente();
             INFORME.append("\n--- Casos límite ---\n");
             probarCasosLimite();
             INFORME.append("\n--- Volumen ---\n");
@@ -62,16 +67,16 @@ public class PruebaTablaHash {
 
     /** Prueba insertar, buscar y eliminar con clave por ID. */
     private static void probarOperacionesBasicas() {
-        TablaHash tabla = new TablaHash(TipoClave.ID);
+        TablaHash<Estacion> tabla = new TablaHash<>();
         verificar("Una tabla nueva está vacía y tiene 16 cubetas",
                 tabla.estaVacia() && tabla.getCapacidad() == 16);
 
         Estacion pro = new Estacion("PRO", "Propatria", "Linea 1", "Catia",
                 12000);
-        tabla.insertar(pro);
-        tabla.insertar(new Estacion("PER", "Perez Bonalde", "Linea 1",
-                "Catia", 8000));
-        tabla.insertar(new Estacion("PZA", "Plaza Sucre", "Linea 1",
+        insertarPorId(tabla, pro);
+        insertarPorId(tabla, new Estacion("PER", "Perez Bonalde",
+                "Linea 1", "Catia", 8000));
+        insertarPorId(tabla, new Estacion("PZA", "Plaza Sucre", "Linea 1",
                 "Catia", 9000));
         verificar("Tras insertar 3 estaciones el tamaño es 3 y buscar(PRO) "
                 + "devuelve el mismo objeto",
@@ -83,7 +88,7 @@ public class PruebaTablaHash {
         verificar("Una clave inexistente devuelve null y contiene() es falso",
                 tabla.buscar("XYZ") == null && !tabla.contiene("XYZ"));
 
-        boolean insertoDuplicado = tabla.insertar(new Estacion("pro",
+        boolean insertoDuplicado = insertarPorId(tabla, new Estacion("pro",
                 "Otro nombre", "Linea 9", "Otra", 1));
         verificar("Insertar un ID repetido devuelve false y conserva la "
                 + "estación original",
@@ -101,7 +106,7 @@ public class PruebaTablaHash {
 
     /** Prueba que las colisiones se resuelvan y que la tabla crezca. */
     private static void probarColisionesYRedimension() {
-        TablaHash tabla = new TablaHash(TipoClave.ID);
+        TablaHash<Estacion> tabla = new TablaHash<>();
 
         boolean enRango = true;
         for (String id : IDS_DATASET) {
@@ -127,15 +132,17 @@ public class PruebaTablaHash {
                 }
             }
         }
-        tabla.insertar(new Estacion(claveA, "Estación " + claveA, "", "", 0));
-        tabla.insertar(new Estacion(claveB, "Estación " + claveB, "", "", 0));
+        insertarPorId(tabla, new Estacion(claveA, "Estación " + claveA, "",
+                "", 0));
+        insertarPorId(tabla, new Estacion(claveB, "Estación " + claveB, "",
+                "", 0));
         verificar("Colisión: " + claveA + " y " + claveB + " caen en la "
                 + "cubeta " + tabla.calcularIndice(claveA)
                 + " y ambas se encuentran (encadenamiento)",
                 tabla.buscar(claveA) != null && tabla.buscar(claveB) != null
                 && tabla.getCadenaMasLarga() >= 2);
 
-        TablaHash red = crearTablaDelDataset();
+        TablaHash<Estacion> red = crearTablaDelDataset();
         verificar("Con las 44 estaciones del dataset la capacidad creció de "
                 + "16 a 64 y el factor de carga es <= 0.75",
                 red.tamano() == 44 && red.getCapacidad() == 64
@@ -150,7 +157,8 @@ public class PruebaTablaHash {
         verificar("Después de redimensionar se encuentran las 44 estaciones",
                 todasEncontradas);
 
-        Estacion[] listadas = red.listar();
+        Estacion[] listadas = red.listar()
+                .aArreglo(new Estacion[red.tamano()]);
         boolean listadoCompleto = listadas.length == 44;
         for (Estacion estacion : listadas) {
             if (estacion == null) {
@@ -167,19 +175,18 @@ public class PruebaTablaHash {
 
     /** Prueba la tabla indexada por nombre. */
     private static void probarClavePorNombre() {
-        TablaHash porNombre = new TablaHash(TipoClave.NOMBRE);
+        TablaHash<Estacion> porNombre = new TablaHash<>();
         Estacion pro = new Estacion("PRO", "Propatria", "Linea 1", "Catia",
                 12000);
-        porNombre.insertar(pro);
+        insertarPorNombre(porNombre, pro);
         verificar("Por nombre: buscar(\"propatria\") encuentra PRO, pero "
                 + "buscar(\"PRO\") no",
                 porNombre.buscar("propatria") == pro
-                && porNombre.buscar("PRO") == null
-                && porNombre.getTipoClave() == TipoClave.NOMBRE);
+                && porNombre.buscar("PRO") == null);
 
-        porNombre.insertar(new Estacion("DOS_C", "Dos Caminos", "Linea 1",
-                "Sucre", 16000));
-        boolean duplicado = porNombre.insertar(new Estacion("OTRA",
+        insertarPorNombre(porNombre, new Estacion("DOS_C", "Dos Caminos",
+                "Linea 1", "Sucre", 16000));
+        boolean duplicado = insertarPorNombre(porNombre, new Estacion("OTRA",
                 "dos caminos", "Linea 1", "Sucre", 1));
         verificar("Un nombre repetido (con otro ID) devuelve false",
                 !duplicado && porNombre.tamano() == 2);
@@ -190,31 +197,63 @@ public class PruebaTablaHash {
                 && porNombre.tamano() == 1);
     }
 
+    /**
+     * Prueba que eliminar una clave inexistente no falle, tanto si su cubeta
+     * está vacía (null) como si tiene otras claves.
+     */
+    private static void probarEliminarInexistente() {
+        TablaHash<Estacion> tabla = new TablaHash<>();
+        verificar("Eliminar en una tabla vacía devuelve null (cubeta null)",
+                tabla.eliminar("PRO") == null && tabla.tamano() == 0);
+
+        Estacion pro = new Estacion("PRO", "Propatria", "", "", 0);
+        insertarPorId(tabla, pro);
+        // Con 16 cubetas, PRO y PER caen en la misma cubeta (la 13).
+        verificar("PRO y PER caen en la cubeta " + tabla.calcularIndice("PRO"),
+                tabla.calcularIndice("PRO") == tabla.calcularIndice("PER"));
+        verificar("Eliminar PER (no existe, pero su cubeta tiene a PRO) "
+                + "devuelve null y PRO sigue en la tabla",
+                tabla.eliminar("PER") == null && tabla.buscar("PRO") == pro
+                && tabla.tamano() == 1);
+
+        verificar("Eliminar null o \"\" devuelve null sin error",
+                tabla.eliminar(null) == null && tabla.eliminar("") == null);
+
+        verificar("Eliminar PRO dos veces: la primera la quita y la segunda "
+                + "devuelve null (su cubeta volvió a null)",
+                tabla.eliminar("PRO") == pro && tabla.eliminar("PRO") == null
+                && tabla.estaVacia());
+    }
+
     /** Prueba datos inválidos y el vaciado. */
     private static void probarCasosLimite() {
-        TablaHash tabla = new TablaHash(TipoClave.ID);
-        verificar("insertar(null) lanza IllegalArgumentException",
-                lanzaExcepcion(() -> tabla.insertar(null),
+        TablaHash<Estacion> tabla = new TablaHash<>();
+        verificar("insertar con clave vacía o valor nulo lanza "
+                + "IllegalArgumentException",
+                lanzaExcepcion(() -> tabla.insertar("", PRUEBA),
+                        IllegalArgumentException.class)
+                && lanzaExcepcion(() -> tabla.insertar("A", null),
                         IllegalArgumentException.class));
 
         verificar("buscar(null) y buscar(\"\") devuelven null sin error",
                 tabla.buscar(null) == null && tabla.buscar("") == null
                 && !tabla.contiene(null));
 
-        TablaHash red = crearTablaDelDataset();
+        TablaHash<Estacion> red = crearTablaDelDataset();
         red.vaciar();
         boolean vacia = red.estaVacia() && red.buscar("PRO") == null
                 && red.getCapacidad() == 16;
-        red.insertar(new Estacion("NUEVA", "Nueva", "", "", 0));
+        insertarPorId(red, new Estacion("NUEVA", "Nueva", "", "", 0));
         verificar("vaciar() deja la tabla vacía con 16 cubetas y se puede "
                 + "volver a usar", vacia && red.tamano() == 1);
     }
 
     /** Prueba que la tabla soporte muchas estaciones. */
     private static void probarVolumen() {
-        TablaHash tabla = new TablaHash(TipoClave.ID);
+        TablaHash<Estacion> tabla = new TablaHash<>();
         for (int i = 0; i < 10000; i++) {
-            tabla.insertar(new Estacion("E" + i, "Estación " + i, "", "", 0));
+            insertarPorId(tabla, new Estacion("E" + i, "Estación " + i, "",
+                    "", 0));
         }
         boolean todas = tabla.tamano() == 10000
                 && tabla.getFactorDeCarga() <= 0.75;
@@ -246,20 +285,44 @@ public class PruebaTablaHash {
      *
      * @return la tabla llena
      */
-    private static TablaHash crearTablaDelDataset() {
-        TablaHash tabla = new TablaHash(TipoClave.ID);
+    private static TablaHash<Estacion> crearTablaDelDataset() {
+        TablaHash<Estacion> tabla = new TablaHash<>();
         for (String id : IDS_DATASET) {
-            tabla.insertar(new Estacion(id, "Estación " + id, "Linea", "Zona",
-                    0));
+            insertarPorId(tabla, new Estacion(id, "Estación " + id, "Linea",
+                    "Zona", 0));
         }
         return tabla;
+    }
+
+    /**
+     * Inserta una estación usando su ID como clave.
+     *
+     * @param tabla    tabla destino
+     * @param estacion estación a insertar
+     * @return el resultado de {@link TablaHash#insertar}
+     */
+    private static boolean insertarPorId(TablaHash<Estacion> tabla,
+            Estacion estacion) {
+        return tabla.insertar(estacion.getId(), estacion);
+    }
+
+    /**
+     * Inserta una estación usando su nombre como clave.
+     *
+     * @param tabla    tabla destino
+     * @param estacion estación a insertar
+     * @return el resultado de {@link TablaHash#insertar}
+     */
+    private static boolean insertarPorNombre(TablaHash<Estacion> tabla,
+            Estacion estacion) {
+        return tabla.insertar(estacion.getClaveNombre(), estacion);
     }
 
     /**
      * Ejecuta una acción e indica si lanzó la excepción esperada.
      * <p>
      * La acción se pasa como una expresión lambda, por ejemplo
-     * {@code () -> tabla.insertar(null)}: es un bloque de código que este
+     * {@code () -> tabla.insertar("A", null)}: es un bloque de código que este
      * método ejecuta dentro de un {@code try}.
      *
      * @param accion código a ejecutar

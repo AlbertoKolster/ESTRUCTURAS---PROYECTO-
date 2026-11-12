@@ -37,9 +37,9 @@ private int numeroEstaciones;
 /** Cantidad de conexiones del grafo (cada una contada una sola vez). */
 private int numeroConexiones;
 /** Tabla que indexa las estaciones por su ID. */
-private final TablaHash tablaPorId;
+private final TablaHash<Estacion> tablaPorId;
 /** Tabla que indexa las estaciones por su nombre. */
-private final TablaHash tablaPorNombre;
+private final TablaHash<Estacion> tablaPorNombre;
 /**
 * Crea un grafo vacío.
 */
@@ -48,8 +48,8 @@ estaciones = new Estacion[CAPACIDAD_INICIAL];
 adyacencia = crearListas(CAPACIDAD_INICIAL);
 numeroEstaciones = 0;
 numeroConexiones = 0;
-tablaPorId = new TablaHash(TablaHash.TipoClave.ID);
-tablaPorNombre = new TablaHash(TablaHash.TipoClave.NOMBRE);
+tablaPorId = new TablaHash<>();
+tablaPorNombre = new TablaHash<>();
 }
 /**
 * Agrega una estación sin conexiones y le asigna el siguiente índice
@@ -84,8 +84,8 @@ int indice = numeroEstaciones;
 estaciones[indice] = estacion;
 adyacencia[indice] = new ListaEnlazada<>();
 estacion.asignarIndice(indice);
-tablaPorId.insertar(estacion);
-tablaPorNombre.insertar(estacion);
+tablaPorId.insertar(estacion.getId(), estacion);
+tablaPorNombre.insertar(estacion.getClaveNombre(), estacion);
 numeroEstaciones++;
 return true;
 }
@@ -380,7 +380,7 @@ return numeroEstaciones == 0;
 *
 * @return la tabla hash por ID
 */
-public TablaHash getTablaPorId() {
+public TablaHash<Estacion> getTablaPorId() {
 return tablaPorId;
 }
 /**
