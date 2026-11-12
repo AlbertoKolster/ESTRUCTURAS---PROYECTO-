@@ -229,11 +229,11 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         panelBuscar = new javax.swing.JPanel();
         txtBuscar = new javax.swing.JTextField();
         btnBuscar = new javax.swing.JButton();
-        scrollResultados = new javax.swing.JScrollPane();
-        txtResultados = new javax.swing.JTextArea();
         panelCentral = new javax.swing.JPanel();
         panelGrafo = new javax.swing.JPanel();
         lblGrafoPendiente = new javax.swing.JLabel();
+        scrollResultados = new javax.swing.JScrollPane();
+        txtResultados = new javax.swing.JTextArea();
         barraMenu = new javax.swing.JMenuBar();
         menuArchivo = new javax.swing.JMenu();
         itemCargar = new javax.swing.JMenuItem();
@@ -316,9 +316,12 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         lblColorear.setText("    Colorear por:");
         panelControles.add(lblColorear);
 
+        grupoColor.add(rbLinea);
+        rbLinea.setSelected(true);
         rbLinea.setText("Linea");
         panelControles.add(rbLinea);
 
+        grupoColor.add(rbSubred);
         rbSubred.setText("Subred");
         panelControles.add(rbSubred);
 
@@ -335,16 +338,6 @@ public class VentanaPrincipal extends javax.swing.JFrame {
 
         getContentPane().add(panelControles, java.awt.BorderLayout.LINE_START);
 
-        txtResultados.setEditable(false);
-        txtResultados.setColumns(20);
-        txtResultados.setFont(new java.awt.Font("Monospaced", 0, 13)); // NOI18N
-        txtResultados.setLineWrap(true);
-        txtResultados.setRows(7);
-        txtResultados.setWrapStyleWord(true);
-        scrollResultados.setViewportView(txtResultados);
-
-        getContentPane().add(scrollResultados, java.awt.BorderLayout.SOUTH);
-
         panelCentral.setLayout(new java.awt.BorderLayout());
 
         panelGrafo.setLayout(new java.awt.BorderLayout());
@@ -354,6 +347,16 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         panelGrafo.add(lblGrafoPendiente, java.awt.BorderLayout.CENTER);
 
         panelCentral.add(panelGrafo, java.awt.BorderLayout.CENTER);
+
+        txtResultados.setEditable(false);
+        txtResultados.setColumns(20);
+        txtResultados.setFont(new java.awt.Font("Monospaced", 0, 13)); // NOI18N
+        txtResultados.setLineWrap(true);
+        txtResultados.setRows(7);
+        txtResultados.setWrapStyleWord(true);
+        scrollResultados.setViewportView(txtResultados);
+
+        panelCentral.add(scrollResultados, java.awt.BorderLayout.SOUTH);
 
         getContentPane().add(panelCentral, java.awt.BorderLayout.CENTER);
 
