@@ -4,6 +4,7 @@
  */
 package urbanroute.interfaz;
 import java.io.File;
+import java.awt.BorderLayout;
 import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -25,13 +26,17 @@ public class VentanaPrincipal extends javax.swing.JFrame {
 
 /** Coordinador al que la ventana le pide todo. */
     private final ControladorRed controlador;
-
+    
+    /** Dibuja la red con GraphStream dentro de panelGrafo. */
+    private final VisualizadorGrafo visualizador;
     /**
      * Crea la ventana principal y carga la red maestra de data/.
      */
     public VentanaPrincipal() {
         initComponents();
         controlador = new ControladorRed();
+        visualizador = new VisualizadorGrafo();
+        panelGrafo.add(visualizador.getPanel(), BorderLayout.CENTER);
         setSize(1100, 700);
         setLocationRelativeTo(null);
         cargarRedInicial();
@@ -54,7 +59,7 @@ public class VentanaPrincipal extends javax.swing.JFrame {
                     + "\n\nUse \"Cargar red\" para elegir otros archivos.",
                     "Aviso", JOptionPane.WARNING_MESSAGE);
         }
-        actualizarEstado();
+        actualizarVista();
     }
 
     /**
@@ -90,7 +95,7 @@ public class VentanaPrincipal extends javax.swing.JFrame {
             mostrarError("No se pudo cargar la red:\n" + e.getMessage()
                     + "\n\nSe conserva la red anterior.");
         }
-        actualizarEstado();
+        actualizarVista();
     }
 
     /**
@@ -185,7 +190,27 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         JOptionPane.showMessageDialog(this, mensaje, "Error",
                 JOptionPane.ERROR_MESSAGE);
     }
+        /**
+     * Vuelve a dibujar la red completa, la colorea según la opción elegida
+     * y actualiza la barra de estado. Se llama cada vez que la red cambia.
+     */
+    private void actualizarVista() {
+        visualizador.dibujar(controlador.getGrafo());
+        colorear();
+        actualizarEstado();
+    }
 
+    /**
+     * Colorea el dibujo por línea o por subred, según el botón de opción
+     * que esté marcado.
+     */
+    private void colorear() {
+        if (rbSubred.isSelected()) {
+            visualizador.colorearPorSubred(controlador.obtenerSubredes());
+        } else {
+            visualizador.colorearPorLinea();
+        }
+    }
     /**
      * Actualiza la barra de estado con el resumen de la red.
      */
@@ -231,7 +256,6 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         btnBuscar = new javax.swing.JButton();
         panelCentral = new javax.swing.JPanel();
         panelGrafo = new javax.swing.JPanel();
-        lblGrafoPendiente = new javax.swing.JLabel();
         scrollResultados = new javax.swing.JScrollPane();
         txtResultados = new javax.swing.JTextArea();
         barraMenu = new javax.swing.JMenuBar();
@@ -319,10 +343,20 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         grupoColor.add(rbLinea);
         rbLinea.setSelected(true);
         rbLinea.setText("Linea");
+        rbLinea.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                rbLineaActionPerformed(evt);
+            }
+        });
         panelControles.add(rbLinea);
 
         grupoColor.add(rbSubred);
         rbSubred.setText("Subred");
+        rbSubred.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                rbSubredActionPerformed(evt);
+            }
+        });
         panelControles.add(rbSubred);
 
         lblBuscar.setText(" Buscar estación:");
@@ -341,11 +375,6 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         panelCentral.setLayout(new java.awt.BorderLayout());
 
         panelGrafo.setLayout(new java.awt.BorderLayout());
-
-        lblGrafoPendiente.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        lblGrafoPendiente.setText("Aquí se dibujará el grafo");
-        panelGrafo.add(lblGrafoPendiente, java.awt.BorderLayout.CENTER);
-
         panelCentral.add(panelGrafo, java.awt.BorderLayout.CENTER);
 
         txtResultados.setEditable(false);
@@ -492,6 +521,14 @@ public class VentanaPrincipal extends javax.swing.JFrame {
                 "Acerca de", JOptionPane.INFORMATION_MESSAGE);
     }//GEN-LAST:event_itemAcercaDeActionPerformed
 
+    private void rbLineaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rbLineaActionPerformed
+            colorear();
+    }//GEN-LAST:event_rbLineaActionPerformed
+
+    private void rbSubredActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rbSubredActionPerformed
+        colorear();
+    }//GEN-LAST:event_rbSubredActionPerformed
+
     /**
      * @param args the command line arguments
      */
@@ -557,7 +594,6 @@ public class VentanaPrincipal extends javax.swing.JFrame {
     private javax.swing.JLabel lblBuscar;
     private javax.swing.JLabel lblColorear;
     private javax.swing.JLabel lblEstado;
-    private javax.swing.JLabel lblGrafoPendiente;
     private javax.swing.JLabel lblModificar;
     private javax.swing.JMenu menuAnalisis;
     private javax.swing.JMenu menuArchivo;
