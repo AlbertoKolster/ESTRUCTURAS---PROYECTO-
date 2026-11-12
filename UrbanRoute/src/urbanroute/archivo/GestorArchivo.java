@@ -53,13 +53,13 @@ public class GestorArchivo {
      * Encabezado que se escribe en el dataset.
      */
     private static final String ENCABEZADO_DATASET
-            = "ID_Estacion, Nombre, Linea, Zona, Capacidad_Pasajeros_Hora";
+            = "ID_Estacion,Nombre,Linea,Zona,Capacidad_Pasajeros_Hora";
 
     /**
      * Encabezado que se escribe en el archivo de grafo.
      */
     private static final String ENCABEZADO_GRAFO
-            = "Estacion_Origen, Estacion_Destino, Tiempo_Minutos";
+            = "Estacion_Origen,Estacion_Destino,Tiempo_Minutos";
 
     /**
      * Advertencias de la última carga, en el orden en que aparecieron.

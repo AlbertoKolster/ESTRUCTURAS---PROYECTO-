@@ -69,10 +69,10 @@ public class PruebaEscritura {
                 && recargado.numeroConexiones() == 41
                 && gestor.cantidadAdvertencias() == 0);
 
-        Estacion cano = recargado.buscarEstacion("CAN");
-        verificar("CAN conserva nombre, línea, zona y capacidad",
+        Estacion cano = recargado.buscarEstacion("CAÑ");
+        verificar("CAÑ conserva nombre, línea, zona y capacidad",
                 cano != null && cano.getNombre().equals("Caño Amarillo")
-                && cano.getLinea().equals("1")
+                && cano.getLinea().equals("Linea 1")
                 && cano.getZona().equals("23 de Enero")
                 && cano.getCapacidad() == 7000);
 
