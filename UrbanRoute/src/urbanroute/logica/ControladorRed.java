@@ -6,7 +6,7 @@ import urbanroute.modelo.Estacion;
 import urbanroute.modelo.Grafo;
 import urbanroute.modelo.Ruta;
 import urbanroute.modelo.Subred;
-
+import urbanroute.modelo.Conexion;
 /**
  * Coordinador de la aplicación: es la única clase con la que habla la
  * interfaz gráfica.
@@ -271,12 +271,24 @@ public class ControladorRed {
     }
 
     /**
-     * Devuelve el grado (número de conexiones) de una estación.
+     * Devuelve las estaciones conectadas directamente con una estación. Lo
+     * usa la ventana para ofrecer solo conexiones que existen al eliminar.
+     * Complejidad O(g), con g el grado de la estación.
      *
      * @param id ID de la estación
-     * @return su grado
+     * @return sus vecinas, en el orden de su lista de adyacencia
      * @throws IllegalArgumentException si la estación no existe
      */
+    public Estacion[] obtenerVecinos(String id) {
+        Conexion[] conexiones = grafo.obtenerVecinos(id);
+        Estacion[] vecinos = new Estacion[conexiones.length];
+        for (int i = 0; i < conexiones.length; i++) {
+            String idVecino = conexiones[i].getExtremoOpuesto(id);
+            vecinos[i] = grafo.buscarEstacion(idVecino);
+        }
+        return vecinos;
+    }
+    
     public int getGrado(String id) {
         return grafo.getGrado(id);
     }

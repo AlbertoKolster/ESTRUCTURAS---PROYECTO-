@@ -3,6 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
  */
 package urbanroute.interfaz;
+
 import java.io.File;
 import java.awt.BorderLayout;
 import java.io.IOException;
@@ -12,6 +13,9 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextArea;
 import javax.swing.filechooser.FileNameExtensionFilter;
 import urbanroute.logica.ControladorRed;
+import urbanroute.modelo.Conexion;
+import urbanroute.modelo.Estacion;
+
 /**
  * Ventana principal de UrbanRoute, diseñada con el GUI Builder de NetBeans.
  * <p>
@@ -24,11 +28,16 @@ import urbanroute.logica.ControladorRed;
  */
 public class VentanaPrincipal extends javax.swing.JFrame {
 
-/** Coordinador al que la ventana le pide todo. */
+    /**
+     * Coordinador al que la ventana le pide todo.
+     */
     private final ControladorRed controlador;
-    
-    /** Dibuja la red con GraphStream dentro de panelGrafo. */
+
+    /**
+     * Dibuja la red con GraphStream dentro de panelGrafo.
+     */
     private final VisualizadorGrafo visualizador;
+
     /**
      * Crea la ventana principal y carga la red maestra de data/.
      */
@@ -43,8 +52,8 @@ public class VentanaPrincipal extends javax.swing.JFrame {
     }
 
     /**
-     * Carga los archivos maestros al iniciar. Si faltan, avisa y deja la
-     * red vacía para que el usuario cargue otra.
+     * Carga los archivos maestros al iniciar. Si faltan, avisa y deja la red
+     * vacía para que el usuario cargue otra.
      */
     private void cargarRedInicial() {
         try {
@@ -119,8 +128,8 @@ public class VentanaPrincipal extends javax.swing.JFrame {
     /**
      * Si hay cambios sin guardar, pregunta qué hacer con ellos.
      *
-     * @return true si se puede continuar; false si el usuario canceló o
-     * falló el guardado
+     * @return true si se puede continuar; false si el usuario canceló o falló
+     * el guardado
      */
     private boolean confirmarCambiosPendientes() {
         if (!controlador.hayCambiosSinGuardar()) {
@@ -182,17 +191,137 @@ public class VentanaPrincipal extends javax.swing.JFrame {
     }
 
     /**
-     * Muestra un mensaje de error.
-     *
-     * @param mensaje texto del error
+     * Abre el diálogo para agregar una estación y, si el usuario acepta, la
+     * agrega a la red. La estación nueva queda sin conexiones.
      */
+    private void agregarEstacion() {
+        DialogoEstacion dialogo = new DialogoEstacion(this, true);
+        // Es modal: el programa espera aquí hasta que se cierre el diálogo.
+        dialogo.setVisible(true);
+        if (!dialogo.fueAceptado()) {
+            return;
+        }
+        try {
+            Estacion nueva = controlador.agregarEstacion(
+                    dialogo.getIdEstacion(), dialogo.getNombre(),
+                    dialogo.getLinea(), dialogo.getZona(),
+                    dialogo.getCapacidad());
+            actualizarVista();
+            txtResultados.setText("Estación agregada: " + nueva
+                    + "\nQuedó sin conexiones: use \"+ Conexión\" para "
+                    + "unirla a la red.");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
+        }
+    }
+
+    /**
+     * Abre el diálogo para agregar una conexión entre dos estaciones y, si el
+     * usuario acepta, la agrega a la red.
+     */
+    private void agregarConexion() {
+        Estacion[] estaciones = controlador.obtenerEstaciones();
+        if (estaciones.length < 2) {
+            mostrarError("Se necesitan al menos 2 estaciones para crear "
+                    + "una conexión.");
+            return;
+        }
+        DialogoConexion dialogo = new DialogoConexion(this, estaciones);
+        dialogo.setVisible(true);
+        if (!dialogo.fueAceptado()) {
+            return;
+        }
+        try {
+            controlador.agregarConexion(dialogo.getIdOrigen(),
+                    dialogo.getIdDestino(), dialogo.getTiempo());
+            actualizarVista();
+            txtResultados.setText("Conexión agregada: "
+                    + dialogo.getIdOrigen() + " - " + dialogo.getIdDestino()
+                    + " (" + Conexion.formatearTiempo(dialogo.getTiempo())
+                    + " min)");
+        } catch (IllegalArgumentException e) {
+            mostrarError(e.getMessage());
+        }
+    }
+
+    /**
+     * Pide una estación, avisa cuántas conexiones se perderán y, si el usuario
+     * confirma, la elimina (cierre de la estación).
+     */
+    private void eliminarEstacion() {
+        Estacion elegida = elegirEstacion("Estación a eliminar:",
+                "Eliminar estación", controlador.obtenerEstaciones());
+        if (elegida == null) {
+            return;
+        }
+        int grado = controlador.getGrado(elegida.getId());
+        int respuesta = JOptionPane.showConfirmDialog(this,
+                "Se eliminará " + elegida + "\ny sus " + grado
+                + " conexión(es).\n¿Desea continuar?",
+                "Eliminar estación", JOptionPane.YES_NO_OPTION,
+                JOptionPane.WARNING_MESSAGE);
+        if (respuesta != JOptionPane.YES_OPTION) {
+            return;
+        }
+        controlador.eliminarEstacion(elegida.getId());
+        actualizarVista();
+        txtResultados.setText("Estación eliminada: " + elegida
+                + "\nUse \"Subredes\" para ver si la red quedó dividida.");
+    }
+
+    /**
+     * Pide una estación y luego una de sus vecinas, y elimina la conexión entre
+     * ellas. Solo ofrece conexiones que existen.
+     */
+    private void eliminarConexion() {
+        Estacion origen = elegirEstacion("Estación de un extremo:",
+                "Eliminar conexión", controlador.obtenerEstaciones());
+        if (origen == null) {
+            return;
+        }
+        Estacion[] vecinos = controlador.obtenerVecinos(origen.getId());
+        if (vecinos.length == 0) {
+            mostrarError("La estación " + origen.getId()
+                    + " no tiene conexiones.");
+            return;
+        }
+        Estacion destino = elegirEstacion("Conexión de " + origen.getId()
+                + " con:", "Eliminar conexión", vecinos);
+        if (destino == null) {
+            return;
+        }
+        controlador.eliminarConexion(origen.getId(), destino.getId());
+        actualizarVista();
+        txtResultados.setText("Conexión eliminada: " + origen.getId()
+                + " - " + destino.getId());
+    }
+
+    /**
+     * Muestra una lista desplegable para elegir una estación.
+     *
+     * @param mensaje texto que se muestra sobre la lista
+     * @param titulo título de la ventana
+     * @param opciones estaciones entre las que se elige
+     * @return la estación elegida, o null si se canceló o no hay opciones
+     */
+    private Estacion elegirEstacion(String mensaje, String titulo,
+            Estacion[] opciones) {
+        if (opciones.length == 0) {
+            mostrarError("La red no tiene estaciones.");
+            return null;
+        }
+        return (Estacion) JOptionPane.showInputDialog(this, mensaje, titulo,
+                JOptionPane.QUESTION_MESSAGE, null, opciones, opciones[0]);
+    }
+
     private void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Error",
                 JOptionPane.ERROR_MESSAGE);
     }
-        /**
-     * Vuelve a dibujar la red completa, la colorea según la opción elegida
-     * y actualiza la barra de estado. Se llama cada vez que la red cambia.
+
+    /**
+     * Vuelve a dibujar la red completa, la colorea según la opción elegida y
+     * actualiza la barra de estado. Se llama cada vez que la red cambia.
      */
     private void actualizarVista() {
         visualizador.dibujar(controlador.getGrafo());
@@ -201,8 +330,8 @@ public class VentanaPrincipal extends javax.swing.JFrame {
     }
 
     /**
-     * Colorea el dibujo por línea o por subred, según el botón de opción
-     * que esté marcado.
+     * Colorea el dibujo por línea o por subred, según el botón de opción que
+     * esté marcado.
      */
     private void colorear() {
         if (rbSubred.isSelected()) {
@@ -211,6 +340,7 @@ public class VentanaPrincipal extends javax.swing.JFrame {
             visualizador.colorearPorLinea();
         }
     }
+
     /**
      * Actualiza la barra de estado con el resumen de la red.
      */
@@ -227,7 +357,7 @@ public class VentanaPrincipal extends javax.swing.JFrame {
             System.exit(0);
         }
     }
-    
+
     @SuppressWarnings("unchecked")
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
@@ -314,15 +444,35 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         panelControles.add(lblModificar);
 
         btnAgregarEstacion.setText("+ Estación");
+        btnAgregarEstacion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnAgregarEstacionActionPerformed(evt);
+            }
+        });
         panelControles.add(btnAgregarEstacion);
 
         btnEliminarEstacion.setText("- Estación");
+        btnEliminarEstacion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnEliminarEstacionActionPerformed(evt);
+            }
+        });
         panelControles.add(btnEliminarEstacion);
 
         btnAgregarConexion.setText("+ Conexion");
+        btnAgregarConexion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnAgregarConexionActionPerformed(evt);
+            }
+        });
         panelControles.add(btnAgregarConexion);
 
         btnEliminarConexion.setText("- Conexión");
+        btnEliminarConexion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnEliminarConexionActionPerformed(evt);
+            }
+        });
         panelControles.add(btnEliminarConexion);
 
         lblAnalisis.setText("       ANÁLISIS");
@@ -420,15 +570,35 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         menuRed.setText("Red");
 
         itemAgregarEstacion.setText("Agregar estación...");
+        itemAgregarEstacion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                itemAgregarEstacionActionPerformed(evt);
+            }
+        });
         menuRed.add(itemAgregarEstacion);
 
         itemAgregarConexion.setText("Agregar conexión...");
+        itemAgregarConexion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                itemAgregarConexionActionPerformed(evt);
+            }
+        });
         menuRed.add(itemAgregarConexion);
 
         itemEliminarEstacion.setText("Eliminar estación...");
+        itemEliminarEstacion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                itemEliminarEstacionActionPerformed(evt);
+            }
+        });
         menuRed.add(itemEliminarEstacion);
 
         itemEliminarConexion.setText("Eliminar conexión...");
+        itemEliminarConexion.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                itemEliminarConexionActionPerformed(evt);
+            }
+        });
         menuRed.add(itemEliminarConexion);
 
         barraMenu.add(menuRed);
@@ -481,7 +651,7 @@ public class VentanaPrincipal extends javax.swing.JFrame {
     }//GEN-LAST:event_itemCargarActionPerformed
 
     private void itemHubsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemHubsActionPerformed
-        
+
     }//GEN-LAST:event_itemHubsActionPerformed
 
     private void btnCargarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCargarActionPerformed
@@ -522,12 +692,44 @@ public class VentanaPrincipal extends javax.swing.JFrame {
     }//GEN-LAST:event_itemAcercaDeActionPerformed
 
     private void rbLineaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rbLineaActionPerformed
-            colorear();
+        colorear();
     }//GEN-LAST:event_rbLineaActionPerformed
 
     private void rbSubredActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_rbSubredActionPerformed
         colorear();
     }//GEN-LAST:event_rbSubredActionPerformed
+
+    private void btnAgregarEstacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAgregarEstacionActionPerformed
+        agregarEstacion();
+    }//GEN-LAST:event_btnAgregarEstacionActionPerformed
+
+    private void itemAgregarEstacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemAgregarEstacionActionPerformed
+        agregarEstacion();
+    }//GEN-LAST:event_itemAgregarEstacionActionPerformed
+
+    private void itemEliminarEstacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemEliminarEstacionActionPerformed
+        eliminarEstacion();
+    }//GEN-LAST:event_itemEliminarEstacionActionPerformed
+
+    private void btnEliminarEstacionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEliminarEstacionActionPerformed
+        eliminarEstacion();
+    }//GEN-LAST:event_btnEliminarEstacionActionPerformed
+
+    private void btnAgregarConexionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnAgregarConexionActionPerformed
+        agregarConexion();
+    }//GEN-LAST:event_btnAgregarConexionActionPerformed
+
+    private void itemAgregarConexionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemAgregarConexionActionPerformed
+        agregarConexion();
+    }//GEN-LAST:event_itemAgregarConexionActionPerformed
+
+    private void itemEliminarConexionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemEliminarConexionActionPerformed
+        eliminarConexion();
+    }//GEN-LAST:event_itemEliminarConexionActionPerformed
+
+    private void btnEliminarConexionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEliminarConexionActionPerformed
+        eliminarConexion();
+    }//GEN-LAST:event_btnEliminarConexionActionPerformed
 
     /**
      * @param args the command line arguments
