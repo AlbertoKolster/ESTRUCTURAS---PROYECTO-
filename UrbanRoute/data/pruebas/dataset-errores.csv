@@ -1,0 +1,8 @@
+ID_Estacion,Nombre,Linea,Zona,Capacidad_Pasajeros_Hora
+A,Alfa,Linea 1,Centro,1000
+B,Beta,Linea 1
+C,Gamma,Linea 1,Centro,mucha
+D,Delta,Linea 1,Centro,-5
+a,Otra Alfa,Linea 1,Centro,500
+E,ALFA,Linea 2,Este,800
+F,Foxtrot,Linea 2,Este,1200

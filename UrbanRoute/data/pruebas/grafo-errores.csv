@@ -1,0 +1,9 @@
+Estacion_Origen,Estacion_Destino,Tiempo_Minutos
+A,F,3
+F,A,9
+A,A,1
+A,F
+A,XYZ,4
+F,XYZ,0
+F,XYZ,-2
+F,XYZ,rapido

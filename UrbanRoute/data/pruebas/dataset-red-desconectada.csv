@@ -1,0 +1,7 @@
+ID_Estacion,Nombre,Linea,Zona,Capacidad_Pasajeros_Hora
+N1,Norte Uno,Linea 1,Norte,1000
+N2,Norte Dos,Linea 1,Norte,1000
+N3,Norte Tres,Linea 1,Norte,1000
+S1,Sur Uno,Linea 2,Sur,800
+S2,Sur Dos,Linea 2,Sur,800
+AIS,Aislada,Linea 3,Oeste,300
