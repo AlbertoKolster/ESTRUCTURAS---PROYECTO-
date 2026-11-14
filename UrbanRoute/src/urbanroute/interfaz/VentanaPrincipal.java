@@ -6,6 +6,12 @@ package urbanroute.interfaz;
 
 import java.io.File;
 import java.awt.BorderLayout;
+import java.awt.GridLayout;
+import javax.swing.JComboBox;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import urbanroute.modelo.Ruta;
+import urbanroute.modelo.Subred;
 import java.io.IOException;
 import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
@@ -314,6 +320,155 @@ public class VentanaPrincipal extends javax.swing.JFrame {
                 JOptionPane.QUESTION_MESSAGE, null, opciones, opciones[0]);
     }
 
+    /**
+     * Pide un origen y un destino, calcula la ruta de menor tiempo con
+     * Dijkstra, la muestra paso a paso y la resalta en el grafo.
+     */
+    private void mostrarRuta() {
+        Estacion[] estaciones = controlador.obtenerEstaciones();
+        if (estaciones.length < 2) {
+            mostrarError("Se necesitan al menos 2 estaciones.");
+            return;
+        }
+        JComboBox<Estacion> cmbOrigen = new JComboBox<>(estaciones);
+        JComboBox<Estacion> cmbDestino = new JComboBox<>(estaciones);
+        cmbDestino.setSelectedIndex(1);
+        JPanel panel = new JPanel(new GridLayout(2, 2, 8, 8));
+        panel.add(new JLabel("Origen:"));
+        panel.add(cmbOrigen);
+        panel.add(new JLabel("Destino:"));
+        panel.add(cmbDestino);
+        int opcion = JOptionPane.showConfirmDialog(this, panel,
+                "Ruta óptima", JOptionPane.OK_CANCEL_OPTION,
+                JOptionPane.PLAIN_MESSAGE);
+        if (opcion != JOptionPane.OK_OPTION) {
+            return;
+        }
+        Estacion origen = (Estacion) cmbOrigen.getSelectedItem();
+        Estacion destino = (Estacion) cmbDestino.getSelectedItem();
+        Ruta ruta = controlador.calcularRuta(origen.getId(), destino.getId());
+        if (!ruta.existe()) {
+            visualizador.quitarResaltado();
+            txtResultados.setText(ruta + ".\nEstán en subredes distintas: "
+                    + "no hay ningún camino que las una.");
+            return;
+        }
+        visualizador.resaltarRuta(ruta);
+        StringBuilder texto = new StringBuilder();
+        texto.append("Ruta de ").append(origen.getNombre()).append(" a ")
+                .append(destino.getNombre()).append('\n');
+        texto.append("Tiempo total: ")
+                .append(Conexion.formatearTiempo(ruta.getTiempoTotal()))
+                .append(" min   Estaciones: ")
+                .append(ruta.getNumeroEstaciones()).append("\n\n");
+        Estacion[] paradas = ruta.getEstaciones();
+        for (int i = 0; i < paradas.length; i++) {
+            texto.append(i + 1).append(". ").append(paradas[i]);
+            // Hay transbordo si la línea cambia respecto a la parada anterior.
+            if (i > 0 && !paradas[i].getLinea()
+                    .equals(paradas[i - 1].getLinea())) {
+                texto.append("   <- transbordo");
+            }
+            texto.append('\n');
+        }
+        texto.append('\n').append(ruta);
+        txtResultados.setText(texto.toString());
+        txtResultados.setCaretPosition(0);
+    }
+
+    /**
+     * Calcula las subredes con BFS, las lista y colorea el grafo por subred.
+     */
+    private void mostrarSubredes() {
+        Subred[] subredes = controlador.obtenerSubredes();
+        StringBuilder texto = new StringBuilder();
+        texto.append("La red tiene ").append(subredes.length)
+                .append(" subred(es).");
+        if (subredes.length > 1) {
+            texto.append(" Hay zonas incomunicadas entre sí.");
+        }
+        texto.append("\n\n");
+        for (Subred subred : subredes) {
+            texto.append(subred).append('\n');
+        }
+        rbSubred.setSelected(true);
+        visualizador.quitarResaltado();
+        colorear();
+        txtResultados.setText(texto.toString());
+        txtResultados.setCaretPosition(0);
+    }
+
+    /**
+     * Muestra el ranking de estaciones por grado y resalta los hubs (las de
+     * mayor grado).
+     */
+    private void mostrarHubs() {
+        Estacion[] hubs = controlador.obtenerHubs();
+        if (hubs.length == 0) {
+            txtResultados.setText("No hay hubs: la red no tiene conexiones.");
+            return;
+        }
+        Estacion[] ranking = controlador.obtenerRankingHubs();
+        StringBuilder texto = new StringBuilder();
+        texto.append("Hub(s) de transferencia (")
+                .append(controlador.getGrado(hubs[0].getId()))
+                .append(" conexiones):\n");
+        for (Estacion hub : hubs) {
+            texto.append("  ").append(hub).append('\n');
+        }
+        texto.append("\nRanking por grado (las 10 primeras):\n");
+        int limite = Math.min(10, ranking.length);
+        for (int i = 0; i < limite; i++) {
+            texto.append(i + 1).append(". ").append(ranking[i])
+                    .append(" - ").append(controlador.getGrado(
+                    ranking[i].getId())).append(" conexiones\n");
+        }
+        visualizador.resaltarEstaciones(hubs);
+        txtResultados.setText(texto.toString());
+        txtResultados.setCaretPosition(0);
+    }
+
+    /**
+     * Busca la estación escrita en txtBuscar, primero por ID y luego por nombre
+     * (las dos búsquedas usan las tablas hash), muestra sus datos y la resalta
+     * en el grafo.
+     */
+    private void buscarEstacion() {
+        String texto = txtBuscar.getText().trim();
+        if (texto.isEmpty()) {
+            mostrarError("Escriba el ID o el nombre de una estación.");
+            return;
+        }
+        Estacion estacion = controlador.buscarPorId(texto);
+        if (estacion == null) {
+            estacion = controlador.buscarPorNombre(texto);
+        }
+        if (estacion == null) {
+            visualizador.quitarResaltado();
+            txtResultados.setText("No existe ninguna estación con el ID o "
+                    + "el nombre \"" + texto + "\".");
+            return;
+        }
+        StringBuilder datos = new StringBuilder();
+        datos.append("ID:         ").append(estacion.getId()).append('\n');
+        datos.append("Nombre:     ").append(estacion.getNombre()).append('\n');
+        datos.append("Línea:      ").append(estacion.getLinea()).append('\n');
+        datos.append("Zona:       ").append(estacion.getZona()).append('\n');
+        datos.append("Capacidad:  ").append(estacion.getCapacidad())
+                .append(" pasajeros/hora\n");
+        if (estacion.esProvisional()) {
+            datos.append("(Estación provisional: no estaba en el dataset)\n");
+        }
+        Estacion[] vecinos = controlador.obtenerVecinos(estacion.getId());
+        datos.append("Conexiones: ").append(vecinos.length).append('\n');
+        for (Estacion vecino : vecinos) {
+            datos.append("   - ").append(vecino).append('\n');
+        }
+        visualizador.resaltarEstacion(estacion.getId());
+        txtResultados.setText(datos.toString());
+        txtResultados.setCaretPosition(0);
+    }
+
     private void mostrarError(String mensaje) {
         JOptionPane.showMessageDialog(this, mensaje, "Error",
                 JOptionPane.ERROR_MESSAGE);
@@ -479,12 +634,27 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         panelControles.add(lblAnalisis);
 
         btnRuta.setText("Ruta óptima");
+        btnRuta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnRutaActionPerformed(evt);
+            }
+        });
         panelControles.add(btnRuta);
 
         btnSubredes.setText("Subredes");
+        btnSubredes.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnSubredesActionPerformed(evt);
+            }
+        });
         panelControles.add(btnSubredes);
 
         btnHubs.setText("Hubs");
+        btnHubs.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnHubsActionPerformed(evt);
+            }
+        });
         panelControles.add(btnHubs);
 
         lblColorear.setText("    Colorear por:");
@@ -513,9 +683,21 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         panelControles.add(lblBuscar);
 
         panelBuscar.setLayout(new java.awt.BorderLayout());
+
+        txtBuscar.setColumns(8);
+        txtBuscar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                txtBuscarActionPerformed(evt);
+            }
+        });
         panelBuscar.add(txtBuscar, java.awt.BorderLayout.CENTER);
 
         btnBuscar.setText("Buscar");
+        btnBuscar.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                btnBuscarActionPerformed(evt);
+            }
+        });
         panelBuscar.add(btnBuscar, java.awt.BorderLayout.EAST);
 
         panelControles.add(panelBuscar);
@@ -606,9 +788,19 @@ public class VentanaPrincipal extends javax.swing.JFrame {
         menuAnalisis.setText("Análisis");
 
         itemRuta.setText("Ruta óptima...");
+        itemRuta.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                itemRutaActionPerformed(evt);
+            }
+        });
         menuAnalisis.add(itemRuta);
 
         itemSubredes.setText("Subredes");
+        itemSubredes.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                itemSubredesActionPerformed(evt);
+            }
+        });
         menuAnalisis.add(itemSubredes);
 
         itemHubs.setText("Hubs");
@@ -651,7 +843,7 @@ public class VentanaPrincipal extends javax.swing.JFrame {
     }//GEN-LAST:event_itemCargarActionPerformed
 
     private void itemHubsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemHubsActionPerformed
-
+        mostrarHubs();
     }//GEN-LAST:event_itemHubsActionPerformed
 
     private void btnCargarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnCargarActionPerformed
@@ -730,6 +922,35 @@ public class VentanaPrincipal extends javax.swing.JFrame {
     private void btnEliminarConexionActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnEliminarConexionActionPerformed
         eliminarConexion();
     }//GEN-LAST:event_btnEliminarConexionActionPerformed
+
+    private void btnRutaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnRutaActionPerformed
+        mostrarRuta();
+
+    }//GEN-LAST:event_btnRutaActionPerformed
+
+    private void btnSubredesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnSubredesActionPerformed
+        mostrarSubredes();
+    }//GEN-LAST:event_btnSubredesActionPerformed
+
+    private void btnHubsActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnHubsActionPerformed
+        mostrarHubs();
+    }//GEN-LAST:event_btnHubsActionPerformed
+
+    private void btnBuscarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnBuscarActionPerformed
+        buscarEstacion();
+    }//GEN-LAST:event_btnBuscarActionPerformed
+
+    private void txtBuscarActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_txtBuscarActionPerformed
+        buscarEstacion();
+    }//GEN-LAST:event_txtBuscarActionPerformed
+
+    private void itemRutaActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemRutaActionPerformed
+        mostrarRuta();
+    }//GEN-LAST:event_itemRutaActionPerformed
+
+    private void itemSubredesActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_itemSubredesActionPerformed
+        mostrarSubredes();
+    }//GEN-LAST:event_itemSubredesActionPerformed
 
     /**
      * @param args the command line arguments

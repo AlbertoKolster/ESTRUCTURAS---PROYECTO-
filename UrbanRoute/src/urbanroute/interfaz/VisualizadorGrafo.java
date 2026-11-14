@@ -196,7 +196,18 @@ public class VisualizadorGrafo {
         quitarResaltado();
         resaltarNodo(id);
     }
-
+        /**
+     * Resalta varias estaciones a la vez (por ejemplo, los hubs). Antes
+     * quita cualquier resaltado anterior. Complejidad O(V + E).
+     *
+     * @param estaciones estaciones a resaltar
+     */
+    public void resaltarEstaciones(Estacion[] estaciones) {
+        quitarResaltado();
+        for (Estacion estacion : estaciones) {
+            resaltarNodo(estacion.getId());
+        }
+    }
     /**
      * Quita el resaltado de todas las estaciones y conexiones. El color por
      * línea o por subred se mantiene. Complejidad O(V + E).
