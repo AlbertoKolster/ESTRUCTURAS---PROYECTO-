@@ -1,0 +1,277 @@
+---
+title: UrbanRoute — Diagrama de clases
+---
+classDiagram
+    direction TB
+
+    namespace interfaz {
+        class VentanaPrincipal {
+            -ControladorRed controlador
+            -VisualizadorGrafo visualizador
+            +VentanaPrincipal()
+            -cargarRed()
+            -guardarRed() boolean
+            -agregarEstacion()
+            -agregarConexion()
+            -eliminarEstacion()
+            -eliminarConexion()
+            -mostrarRuta()
+            -mostrarSubredes()
+            -mostrarHubs()
+            -buscarEstacion()
+            -actualizarVista()
+        }
+        class DialogoEstacion {
+            -boolean aceptado
+            -int capacidad
+            +fueAceptado() boolean
+            +getIdEstacion() String
+            +getNombre() String
+            +getLinea() String
+            +getZona() String
+            +getCapacidad() int
+        }
+        class DialogoConexion {
+            -Estacion[] estaciones
+            -boolean aceptado
+            -double tiempo
+            +fueAceptado() boolean
+            +getIdOrigen() String
+            +getIdDestino() String
+            +getTiempo() double
+        }
+        class VisualizadorGrafo {
+            -Graph grafoVisual
+            -ViewPanel panel
+            -Grafo grafo
+            +getPanel() JPanel
+            +dibujar(Grafo grafo)
+            +colorearPorLinea()
+            +colorearPorSubred(Subred[] subredes)
+            +resaltarRuta(Ruta ruta)
+            +resaltarEstacion(String id)
+            +resaltarEstaciones(Estacion[] estaciones)
+            +quitarResaltado()
+        }
+    }
+
+    namespace logica {
+        class ControladorRed {
+            -GestorArchivo gestor
+            -Grafo grafo
+            -String rutaDataset
+            -String rutaGrafo
+            -boolean cambiosSinGuardar
+            +cargarArchivosMaestros() String[]
+            +cargar(String dataset, String grafo) String[]
+            +guardar()
+            +hayCambiosSinGuardar() boolean
+            +agregarEstacion(id, nombre, linea, zona, capacidad) Estacion
+            +agregarConexion(String a, String b, double tiempo)
+            +eliminarEstacion(String id) Estacion
+            +eliminarConexion(String a, String b)
+            +calcularRuta(String origen, String destino) Ruta
+            +obtenerSubredes() Subred[]
+            +obtenerHubs() Estacion[]
+            +obtenerRankingHubs() Estacion[]
+            +buscarPorId(String id) Estacion
+            +buscarPorNombre(String nombre) Estacion
+            +obtenerVecinos(String id) Estacion[]
+            +getResumen() String
+        }
+        class CalculadorRutas {
+            -Grafo grafo
+            +calcularRuta(String origen, String destino) Ruta
+        }
+        class AnalizadorConectividad {
+            -Grafo grafo
+            +obtenerSubredes() Subred[]
+            +contarSubredes() int
+            +hayZonasIncomunicadas() boolean
+            +estanConectadas(String a, String b) boolean
+        }
+        class AnalizadorHubs {
+            -Grafo grafo
+            +obtenerRanking() Estacion[]
+            +getGradoMaximo() int
+            +obtenerHubs() Estacion[]
+        }
+    }
+
+    namespace archivo {
+        class GestorArchivo {
+            -ListaEnlazada~String~ advertencias
+            +cargar(String dataset, String grafo) Grafo
+            +guardar(Grafo grafo, String dataset, String grafo)
+            +getAdvertencias() String[]
+            +cantidadAdvertencias() int
+        }
+    }
+
+    namespace modelo {
+        class Grafo {
+            -Estacion[] estaciones
+            -ListaEnlazada~Conexion~[] adyacencia
+            -int numeroEstaciones
+            -int numeroConexiones
+            -TablaHash~Estacion~ tablaPorId
+            -TablaHash~Estacion~ tablaPorNombre
+            +agregarEstacion(Estacion e) boolean
+            +agregarConexion(String a, String b, double t) boolean
+            +eliminarEstacion(String id) Estacion
+            +eliminarConexion(String a, String b) boolean
+            +buscarEstacion(String id) Estacion
+            +buscarPorNombre(String nombre) Estacion
+            +obtenerVecinos(String id) Conexion[]
+            +getGrado(String id) int
+            +obtenerEstaciones() Estacion[]
+            +obtenerConexiones() Conexion[]
+        }
+        class TablaHash~T~ {
+            -ListaEnlazada~Entrada~[] cubetas
+            -int tamano
+            +insertar(String clave, T valor) boolean
+            +buscar(String clave) T
+            +contiene(String clave) boolean
+            +eliminar(String clave) T
+            +listar() ListaEnlazada~T~
+            +getFactorDeCarga() double
+            -calcularIndice(String clave, int capacidad)$ int
+            -redimensionar()
+        }
+        class Entrada~T~ {
+            -String clave
+            -T valor
+        }
+        class Estacion {
+            -String id
+            -String nombre
+            -String linea
+            -String zona
+            -int capacidad
+            -boolean provisional
+            -int indice
+            +crearProvisional(String id)$ Estacion
+            +getId() String
+            +getNombre() String
+            +getLinea() String
+            +esProvisional() boolean
+        }
+        class Conexion {
+            -String origen
+            -String destino
+            -double tiempo
+            +getExtremoOpuesto(String id) String
+            +conecta(String a, String b) boolean
+            +formatearTiempo(double minutos)$ String
+        }
+        class Ruta {
+            -Estacion origen
+            -Estacion destino
+            -ListaEnlazada~Estacion~ estaciones
+            -double tiempoTotal
+            +sinRuta(Estacion o, Estacion d)$ Ruta
+            +existe() boolean
+            +getEstaciones() Estacion[]
+            +getTiempoTotal() double
+        }
+        class Subred {
+            -int numero
+            -ListaEnlazada~Estacion~ estaciones
+            +agregar(Estacion e)
+            +tamano() int
+            +contiene(String id) boolean
+            +getEstaciones() Estacion[]
+        }
+    }
+
+    namespace estructuras {
+        class ListaEnlazada~T~ {
+            -Nodo~T~ cabeza
+            -Nodo~T~ cola
+            -Nodo~T~ actual
+            -int tamano
+            +agregar(T dato)
+            +eliminar(T dato) boolean
+            +contiene(T dato) boolean
+            +aArreglo(T[] destino) T[]
+            +reiniciarRecorrido()
+            +haySiguiente() boolean
+            +siguiente() T
+        }
+        class Nodo~T~ {
+            -T dato
+            -Nodo~T~ siguiente
+        }
+        class Cola~T~ {
+            -Nodo~T~ frente
+            -Nodo~T~ fin
+            -int tamano
+            +encolar(T dato)
+            +desencolar() T
+            +estaVacia() boolean
+        }
+        class Pila~T~ {
+            -Nodo~T~ tope
+            -int tamano
+            +apilar(T dato)
+            +desapilar() T
+            +estaVacia() boolean
+        }
+        class ColaPrioridad {
+            -int[] indices
+            -double[] distancias
+            -int tamano
+            +insertar(int indice, double distancia)
+            +extraerMinimo() int
+            +estaVacia() boolean
+        }
+    }
+
+    %% Interfaz
+    VentanaPrincipal "1" *-- "1" ControladorRed : usa
+    VentanaPrincipal "1" *-- "1" VisualizadorGrafo : dibuja con
+    VentanaPrincipal ..> DialogoEstacion : abre
+    VentanaPrincipal ..> DialogoConexion : abre
+    VisualizadorGrafo ..> Grafo : dibuja
+    VisualizadorGrafo ..> Ruta : resalta
+    VisualizadorGrafo ..> Subred : colorea
+    DialogoConexion o-- Estacion : muestra
+
+    %% Lógica
+    ControladorRed "1" *-- "1" GestorArchivo
+    ControladorRed "1" o-- "1" Grafo : red actual
+    ControladorRed ..> CalculadorRutas : crea
+    ControladorRed ..> AnalizadorConectividad : crea
+    ControladorRed ..> AnalizadorHubs : crea
+    CalculadorRutas --> Grafo
+    CalculadorRutas ..> ColaPrioridad : Dijkstra
+    CalculadorRutas ..> Pila : reconstruye ruta
+    CalculadorRutas ..> Ruta : crea
+    AnalizadorConectividad --> Grafo
+    AnalizadorConectividad ..> Cola : BFS
+    AnalizadorConectividad ..> Subred : crea
+    AnalizadorHubs --> Grafo
+
+    %% Archivo
+    GestorArchivo ..> Grafo : crea y guarda
+    GestorArchivo *-- ListaEnlazada : advertencias
+
+    %% Modelo
+    Grafo "1" *-- "2" TablaHash : por ID y por nombre
+    Grafo "1" o-- "*" Estacion
+    Grafo "1" *-- "*" Conexion
+    Grafo *-- ListaEnlazada : listas de adyacencia
+    TablaHash *-- Entrada
+    TablaHash *-- ListaEnlazada : cubetas
+    Entrada --> Estacion : valor
+    Conexion ..> Estacion : une 2 por ID
+    Ruta o-- Estacion
+    Ruta *-- ListaEnlazada
+    Subred o-- Estacion
+    Subred *-- ListaEnlazada
+
+    %% Estructuras
+    ListaEnlazada "1" *-- "*" Nodo
+    Cola "1" *-- "*" Nodo
+    Pila "1" *-- "*" Nodo
